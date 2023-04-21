@@ -236,7 +236,7 @@ public final class DBNinja {
 
 	public static void printInventory() throws SQLException, IOException {
 		connect_to_db();
-		
+		//Need ID, Name, and current inventory levels
 		/*
 		 * I used this function to PRINT (not return) the inventory list.
 		 * When you print the inventory (either here or somewhere else)

@@ -318,12 +318,7 @@ public class Menu {
 	{
 		//print the inventory. I am really just concerned with the ID, the name, and the current inventory
 		DBNinja.printInventory();
-		
-		
-		
-		
-		
-		
+
 	}
 
 	// Select an inventory item and add more to the inventory level to re-stock the
@@ -333,12 +328,18 @@ public class Menu {
 		/*
 		 * This should print the current inventory and then ask the user which topping they want to add more to and how much to add
 		 */
-		
-		
-		
-		
-		
-		
+		DBNinja.printInventory();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		System.out.print("Which topping would you like to add more to? Enter Topping ID Number");
+		Integer top_id = Integer.parseInt(reader.readLine());
+		System.out.println("How much more would you like to add?");
+		Integer top_amt = Integer.parseInt(reader.readLine());
+		ArrayList<Topping> topping_list = DBNinja.getInventory();
+		for(Topping t: topping_list){
+			if(t.getTopID()==top_id){
+				t.setCurINVT(t.getCurINVT()+top_amt);
+			}
+		}
 	}
 
 	// A function that builds a pizza. Used in our add new order function
