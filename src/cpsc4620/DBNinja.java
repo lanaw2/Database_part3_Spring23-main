@@ -195,7 +195,7 @@ public final class DBNinja {
 	public static void addCustomer(Customer c) throws SQLException, IOException {
 		connect_to_db();
 		try (Statement stmt = (Statement) conn.createStatement()) {
-			String query = "INSERT INTO customers (CustID, FName, LName, Phone) VALUES (" + c.getCustID() + ", '"
+			String query = "INSERT INTO customer (CustomerID, CustomerFName, CustomerLName, CustomerPhoneNumber) VALUES (" + c.getCustID() + ", '"
 					+ c.getFName() + "', '" + c.getLName() + "', '" + c.getPhone() + "')";
 			stmt.executeUpdate(query);
 		}
@@ -223,7 +223,7 @@ public final class DBNinja {
 
 	public static void printInventory() throws SQLException, IOException {
 		connect_to_db();
-
+		
 		/*
 		 * I used this function to PRINT (not return) the inventory list.
 		 * When you print the inventory (either here or somewhere else)

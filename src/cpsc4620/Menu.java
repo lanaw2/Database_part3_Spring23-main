@@ -3,6 +3,7 @@ package cpsc4620;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.sql.Array;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -31,7 +32,7 @@ public class Menu {
 		System.out.println("Welcome to Taylor's Pizzeria!");
 		
 		int menu_option = 0;
-
+		DBConnector.make_connection();
 		// present a menu of options and take their selection
 		
 		PrintMenu();
@@ -169,7 +170,7 @@ public class Menu {
 				for(Discount d:dList){
 					System.out.println(d.toString());
 				}
-				System.out.println("Which order discount would you like to add? Enter the DiscountID. Enter 1 to stop adding discounts.");
+				System.out.println("Which order discount would you like to add? Enter the DiscountID. Enter -1 to stop adding discounts.");
 				Integer discount_id = Integer.parseInt(reader.readLine());
 				// Add selected discount to discount list
 				for(Discount d:dList){
@@ -185,10 +186,13 @@ public class Menu {
 		Order o = null;
 		if(orderType==1){
 			o = new DeliveryOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,address);
+			o.setOrderType(DBNinja.delivery);
 		}else if(orderType==2){
 			o = new PickupOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,0);
+			o.setOrderType(DBNinja.pickup);
 		}else{
 			o = new DineinOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,table_num);
+			o.setOrderType(DBNinja.dine_in);
 		}
 		// Add pizzas and discounts to order
 		o.setPizzaList(pizzaList);
@@ -318,12 +322,7 @@ public class Menu {
 	{
 		//print the inventory. I am really just concerned with the ID, the name, and the current inventory
 		DBNinja.printInventory();
-		
-		
-		
-		
-		
-		
+
 	}
 
 	// Select an inventory item and add more to the inventory level to re-stock the
@@ -333,12 +332,18 @@ public class Menu {
 		/*
 		 * This should print the current inventory and then ask the user which topping they want to add more to and how much to add
 		 */
-		
-		
-		
-		
-		
-		
+		DBNinja.printInventory();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		System.out.print("Which topping would you like to add more to? Enter Topping ID Number");
+		Integer top_id = Integer.parseInt(reader.readLine());
+		System.out.println("How much more would you like to add?");
+		Integer top_amt = Integer.parseInt(reader.readLine());
+		ArrayList<Topping> topping_list = DBNinja.getInventory();
+		for(Topping t: topping_list){
+			if(t.getTopID()==top_id){
+				DBNinja.AddToInventory(t,top_amt);
+			}
+		}
 	}
 
 	// A function that builds a pizza. Used in our add new order function
@@ -358,14 +363,87 @@ public class Menu {
 		 * 
 		 * Once the discounts are added, we can return the pizza
 		 */
+		System.out.println("Let's print a pizza!");
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+
+		System.out.println("What size is this pizza?\n(1) Small\n(2) Medium\n(3) Large\n(4) X-Large\nEnter the corresponding number:");
+		Integer size = Integer.parseInt(reader.readLine());
+		System.out.println("What crust for this pizza?\n(1) Thin\n(2) Original\n(3) Pan\n(4) Gluten-Free\nEnter the corresponding number:");
+		Integer crust = Integer.parseInt(reader.readLine());
+		String size_str=null;
+		switch(size){
+			case 1:
+				size_str = DBNinja.size_s;
+			case 2:
+				size_str = DBNinja.size_m;
+			case 3:
+				size_str = DBNinja.size_l;
+			case 4:
+				size_str = DBNinja.size_xl;
+		}
+
+		String crust_str=null;
+		switch(crust){
+			case 1:
+				crust_str = DBNinja.crust_thin;
+			case 2:
+				crust_str = DBNinja.crust_orig;
+			case 3:
+				crust_str = DBNinja.crust_pan;
+			case 4:
+				crust_str = DBNinja.crust_gf;
+		}
+		double BusPrice = DBNinja.getBaseBusPrice(size_str,crust_str);
+		double CustPrice = DBNinja.getBaseCustPrice(size_str,crust_str);
+		boolean add_topp = true;
+		ArrayList<Topping> topp_list = new ArrayList<>();
+		boolean[] topping_doubled;
+		int count = 0;
+		while(add_topp) {
+
+			System.out.println("Printing current topping list...");
+			DBNinja.printInventory();
+			System.out.println("Which topping would you like to add? Enter Topping ID Number, Enter -1 to stop adding toppings:");
+			Integer top_ID = Integer.parseInt(reader.readLine());
+			if (top_ID == -1) {
+				add_topp = false;
+				break;
+			}
+
+			System.out.println("Would you like to add double? Y/N");
+			String isDouble = reader.readLine();
+			boolean doubleAmt = false;
+			if (isDouble.toUpperCase().equals("Y")) {
+				doubleAmt = true;
+			}
+			count++;
+		}
+		System.out.println("Would you like to add any discounts to this pizza? Y/N");
+		String add_discount = reader.readLine();
+		ArrayList<Discount> discountList = new ArrayList<>();
+		if(add_discount.equals("Y")){
+			boolean add_more_discount = true;
+			while(add_more_discount){
+				ArrayList<Discount> dList = DBNinja.getDiscountList();
+				for(Discount d:dList){
+					System.out.println(d.toString());
+				}
+				System.out.println("Which order discount would you like to add? Enter the DiscountID. Enter -1 to stop adding discounts.");
+				Integer discount_id = Integer.parseInt(reader.readLine());
+				// Add selected discount to discount list
+				for(Discount d:dList){
+					if(d.getDiscountID()==discount_id){
+						discountList.add(d);
+					}
+				}
+
+			}
+		}
+		SimpleDateFormat formatter = new SimpleDateFormat("YYYY-MM-DD HH:mm:ss");
+		Date date = new Date();
+		//Pizza p = new Pizza(DBNinja.getMaxPizzaID()+1,size,crust,orderID,"Completed",date.toString(),)
+
 		Pizza ret = null;
-		
-		
-		
-		
-		
-		
 		
 		return ret;
 	}
