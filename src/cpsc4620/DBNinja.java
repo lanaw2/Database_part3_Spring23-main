@@ -70,7 +70,7 @@ public final class DBNinja {
 			connect_to_db();
 			Statement stmt = (Statement) conn.createStatement();
 			String query1 = "INSERT INTO ordersummary(OrderID,OrderCustomerID, OrderType, OrderCost, OrderPrice, OrderTime)"
-					+ "VALUES (o.getOrderID(),o.getCustID(),o.getOrderType(), o.BusPrice, o.CustPrice,o.Date )";
+					+ "VALUES (o.getOrderID(),o.getCustID(),o.getOrderType(), o.getBusPrice(), o.getCustPrice(),o.getDate())";
 			stmt.executeUpdate(query1);
 			if(o.getOrderType()==dine_in){
 				String query2 ="INSERT INTO dinein VALUES(o.getOrderID(),o.getTableNum())";
