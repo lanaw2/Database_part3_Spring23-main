@@ -96,19 +96,14 @@ public class Menu {
 		/*
 		 * EnterOrder should do the following:
 		 * Ask if the order is for an existing customer -> If yes, select the customer. If no -> create the customer (as if the menu option 2 was selected).
-		 *
 		 * Ask if the order is delivery, pickup, or dinein (ask for orderType specific information when needed)
-		 *
 		 * Build the pizza (there's a function for this)
-		 *
 		 * ask if more pizzas should be be created. if yes, go back to building your pizza.
-		 *
 		 * Apply order discounts as needed (including to the DB)
-		 *
 		 * apply the pizza to the order (including to the DB)
-		 *
 		 * return to menu
 		 */
+
 		Integer CustID;
 		// Get next order number
 		Integer orderNumber = DBNinja.getNextOrderID();
@@ -142,22 +137,19 @@ public class Menu {
 		// Add Pizza
 		boolean add_more_pizza = true;
 		double orderBusPrice = 0;
-		double orderCusPrice = 0;
+		double orderCustPrice = 0;
 		ArrayList<Pizza> pizzaList = new ArrayList<>();
 		while(add_more_pizza){
 			Pizza new_pizza = buildPizza(orderNumber);
 			pizzaList.add(new_pizza);
 			orderBusPrice += new_pizza.getBusPrice();
-			orderCusPrice += new_pizza.getCustPrice();
+			orderCustPrice += new_pizza.getCustPrice();
 			System.out.println("Enter -1 to stop adding pizzas... Enter anything else to continue adding pizzas:");
 			Integer more_pizza = Integer.parseInt(reader.readLine());
 			if(more_pizza==-1){
 				add_more_pizza=false;
 			}
 		}
-		// Timestamp for order
-		SimpleDateFormat formatter = new SimpleDateFormat("YYYY-MM-DD HH:mm:ss");
-		Date date = new Date();
 
 		// Add discounts to order
 		System.out.println("Would you like to add any discounts to this order? Y/N");
@@ -172,6 +164,9 @@ public class Menu {
 				}
 				System.out.println("Which order discount would you like to add? Enter the DiscountID. Enter -1 to stop adding discounts.");
 				Integer discount_id = Integer.parseInt(reader.readLine());
+				if(discount_id==-1){
+					break;
+				}
 				// Add selected discount to discount list
 				for(Discount d:dList){
 					if(d.getDiscountID()==discount_id){
@@ -182,25 +177,32 @@ public class Menu {
 			}
 		}
 
+		// Timestamp for order
+		SimpleDateFormat formatter = new SimpleDateFormat("YYYY-MM-DD HH:mm:ss");
+		Date date = new Date();
+
 		// Create new order
 		Order o = null;
 		if(orderType==1){
-			o = new DeliveryOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,address);
+			o = new DeliveryOrder(orderNumber,CustID,formatter.format(date),orderCustPrice,orderBusPrice,0,address);
 			o.setOrderType(DBNinja.delivery);
 		}else if(orderType==2){
-			o = new PickupOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,0);
+			o = new PickupOrder(orderNumber,CustID, formatter.format(date), orderCustPrice,orderBusPrice,0,0);
 			o.setOrderType(DBNinja.pickup);
 		}else{
-			o = new DineinOrder(orderNumber,CustID,date.toString(),orderCusPrice,orderBusPrice,0,table_num);
+			o = new DineinOrder(orderNumber,CustID,formatter.format(date),orderCustPrice,orderBusPrice,0,table_num);
 			o.setOrderType(DBNinja.dine_in);
 		}
 		// Add pizzas and discounts to order
 		o.setPizzaList(pizzaList);
 		o.setDiscountList(discountList);
 
-		// Add order to DB
+		// Add Orders/Discounts to database
+		for(Discount d: discountList){
+			DBNinja.useOrderDiscount(o,d);
+		}
+		// Add order to database
 		DBNinja.addOrder(o);
-
 		System.out.println("Finished adding order...Returning to menu...");
 	}
 	
@@ -395,12 +397,13 @@ public class Menu {
 		}
 		double BusPrice = DBNinja.getBaseBusPrice(size_str,crust_str);
 		double CustPrice = DBNinja.getBaseCustPrice(size_str,crust_str);
+		SimpleDateFormat formatter = new SimpleDateFormat("YYYY-MM-DD HH:mm:ss");
+		Date date = new Date();
+		Pizza p = new Pizza(DBNinja.getMaxPizzaID()+1,size_str,crust_str,orderID,"Completed",date.toString(),BusPrice,CustPrice);
 		boolean add_topp = true;
-		ArrayList<Topping> topp_list = new ArrayList<>();
-		boolean[] topping_doubled;
 		int count = 0;
+		ArrayList<Topping> all_toppings = DBNinja.getInventory();
 		while(add_topp) {
-
 			System.out.println("Printing current topping list...");
 			DBNinja.printInventory();
 			System.out.println("Which topping would you like to add? Enter Topping ID Number, Enter -1 to stop adding toppings:");
@@ -409,18 +412,25 @@ public class Menu {
 				add_topp = false;
 				break;
 			}
-
 			System.out.println("Would you like to add double? Y/N");
 			String isDouble = reader.readLine();
-			boolean doubleAmt = false;
+			boolean doubleAmt;
 			if (isDouble.toUpperCase().equals("Y")) {
 				doubleAmt = true;
+			}else{
+				doubleAmt = false;
+			}
+			double topAmt;
+			for(Topping t: all_toppings){
+				if(t.getTopID()==top_ID){
+					p.addToppings(t,doubleAmt);
+					DBNinja.useTopping(p,t,doubleAmt);
+				}
 			}
 			count++;
 		}
 		System.out.println("Would you like to add any discounts to this pizza? Y/N");
 		String add_discount = reader.readLine();
-		ArrayList<Discount> discountList = new ArrayList<>();
 		if(add_discount.equals("Y")){
 			boolean add_more_discount = true;
 			while(add_more_discount){
@@ -430,21 +440,21 @@ public class Menu {
 				}
 				System.out.println("Which order discount would you like to add? Enter the DiscountID. Enter -1 to stop adding discounts.");
 				Integer discount_id = Integer.parseInt(reader.readLine());
+				if(discount_id==-1){
+					break;
+				}
 				// Add selected discount to discount list
 				for(Discount d:dList){
 					if(d.getDiscountID()==discount_id){
-						discountList.add(d);
+						p.addDiscounts(d);
+						DBNinja.usePizzaDiscount(p,d);
 					}
 				}
 
 			}
 		}
-		SimpleDateFormat formatter = new SimpleDateFormat("YYYY-MM-DD HH:mm:ss");
-		Date date = new Date();
-		//Pizza p = new Pizza(DBNinja.getMaxPizzaID()+1,size,crust,orderID,"Completed",date.toString(),)
-
-		Pizza ret = null;
-		
+		Pizza ret = p;
+		DBNinja.addPizza(ret);
 		return ret;
 	}
 	
@@ -470,6 +480,16 @@ public class Menu {
 		 * 
 		 * You should ask the user which report to print
 		 */
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+		System.out.println("Which report would you like to print? Enter a number: \n(1) ToppingPopularity\n(2) ProfitByPizza\n(3) ProfitByOrderType");
+		Integer report_choice = Integer.parseInt(reader.readLine());
+		if(report_choice==1){
+			DBNinja.printToppingPopReport();
+		}else if(report_choice==2){
+			DBNinja.printProfitByPizzaReport();
+		}else if(report_choice==3){
+			DBNinja.printProfitByOrderType();
+		}
 	}
 
 }
