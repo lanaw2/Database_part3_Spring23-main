@@ -102,6 +102,60 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+
+		// Create the SQL statement for inserting a new pizza
+		try {
+			String query1 = "INSERT INTO pizzas (crust_type, size, order_id, pizza_state, pizza_date, cust_price, bus_price) "
+					+
+					"VALUES ('" + p.getCrustType() + "', '" + p.getSize() + "', " + p.getOrderID() + ", '"
+					+ p.getPizzaState() +
+					"', '" + p.getPizzaDate() + "', " + p.getCustPrice() + ", " + p.getBusPrice() + ")";
+
+			// Execute the SQL statement to insert the new pizza
+			Statement stmt = conn.createStatement();
+			stmt.executeUpdate(query1);
+			stmt.close();
+
+			// Retrieve the ID of the newly inserted pizza
+			String getLastInsertIDSQL = "SELECT LAST_INSERT_ID()";
+			Statement getLastInsertIDStatement = conn.createStatement();
+			ResultSet rs = getLastInsertIDStatement.executeQuery(getLastInsertIDSQL);
+			if (rs.next()) {
+				int pizzaID = rs.getInt(1);
+				p.setPizzaID(pizzaID);
+			}
+			rs.close();
+			getLastInsertIDStatement.close();
+
+			// Insert the toppings for the pizza into the database
+			ArrayList<Topping> toppings = p.getToppings();
+			for (int i = 0; i < toppings.size(); i++) {
+				Topping t = toppings.get(i);
+				String insertToppingSQL = "INSERT INTO pizza_toppings (pizza_id, topping_id, is_doubled) " +
+						"VALUES (" + p.getPizzaID() + ", " + t.getTopName() + ", " + p.getIsDoubleArray()[i] + ")";
+				Statement insertToppingStatement = conn.createStatement();
+				insertToppingStatement.executeUpdate(insertToppingSQL);
+				insertToppingStatement.close();
+			}
+
+			// Insert the discounts for the pizza into the database
+			ArrayList<Discount> discounts = p.getDiscounts();
+			for (int i = 0; i < discounts.size(); i++) {
+				Discount d = discounts.get(i);
+				String insertDiscountSQL = "INSERT INTO pizza_discounts (pizza_id, discount_id) " +
+						"VALUES (" + p.getPizzaID() + ", " + d.getDiscountID() + ")";
+				Statement insertDiscountStatement = conn.createStatement();
+				insertDiscountStatement.executeUpdate(insertDiscountSQL);
+				insertDiscountStatement.close();
+			}
+			// Close the database connection
+			conn.close();
+		} catch (Exception e) {
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
+
 	}
 
 	public static int getMaxPizzaID() throws SQLException, IOException {
@@ -117,24 +171,11 @@ public final class DBNinja {
 		return -1;
 	}
 
-	public static void useTopping(Pizza p, Topping t, boolean isDoubled) throws SQLException, IOException // this
-																											// function
-																											// will
-																											// update
-																											// toppings
-																											// inventory
-																											// in SQL
-																											// and add
-																											// entities
-																											// to the
-																											// Pizzatops
-																											// table.
-																											// Pass in
-																											// the p
-																											// pizza
-																											// that is
-																											// using t
-																											// topping
+	public static void useTopping(Pizza p, Topping t, boolean isDoubled) throws SQLException, IOException
+	/*
+	 * this function will update toppings inventory in SQL and add entities to the
+	 * Pizzatops table. Pass in the p pizza that is using t topping
+	 */
 	{
 		connect_to_db();
 		/*
@@ -149,6 +190,66 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		try {
+			// Retrieve the current inventory of the topping
+			Statement stmt = conn.createStatement();
+			String query1 = "SELECT CurINVT FROM Topping WHERE TopID = " + t.getTopID();
+			ResultSet rs1 = stmt.executeQuery(query1);
+			int curINVT = 0;
+			if (rs1.next()) {
+				curINVT = rs1.getInt("CurINVT");
+			}
+
+			// Calculate the amount of topping needed based on pizza size and isDoubled flag
+			double amount = 0.0;
+			switch (p.getSize()) {
+				case "Personal":
+					amount = t.getPerAMT();
+					break;
+				case "Medium":
+					amount = t.getMedAMT();
+					break;
+				case "Large":
+					amount = t.getLgAMT();
+					break;
+				case "Extra Large":
+					amount = t.getXLAMT();
+					break;
+			}
+			if (isDoubled) {
+				amount *= 2.0;
+			}
+
+			// Check if there is enough inventory to use the topping
+			if (curINVT < amount) {
+				System.out.println("Sorry, we ran out of " + t.getTopName() + ".");
+				return;
+			}
+
+			// Update the inventory of the topping
+			curINVT -= amount;
+			String query2 = "UPDATE Topping SET CurINVT = " + curINVT + " WHERE TopID = " + t.getTopID();
+			int rowsAffected = stmt.executeUpdate(query2);
+			if (rowsAffected != 1) {
+				System.out.println("Failed to update the inventory of " + t.getTopName() + ".");
+				return;
+			}
+
+			// Add an entry to the PizzaTops table
+			String query3 = "INSERT INTO pizzatopping (PizzaToppingPizzaID, PizzaToppingToppingName, PizzaToppingExtra) VALUES ("
+					+ p.getPizzaID() + ", " + t.getTopName() + ", " + (isDoubled ? 1 : 0) + ")";
+			rowsAffected = stmt.executeUpdate(query3);
+			if (rowsAffected != 1) {
+				System.out.println("Failed to add topping usage to PizzaTops table.");
+			}
+
+			conn.close();
+		} catch (Exception e) {
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
+
 	}
 
 	public static void usePizzaDiscount(Pizza p, Discount d) throws SQLException, IOException {
@@ -170,13 +271,21 @@ public final class DBNinja {
 		 * this table
 		 */
 
-		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		// Update the order in the database
+		String sql = "UPDATE orders SET DiscountOrderName = '" + d.getDiscountName() + "', DiscountOrderID  = "
+				+ o.getOrderID();
+		Statement stmt = conn.createStatement();
+		stmt.executeUpdate(sql);
+
+		conn.close();
+
 	}
 
 	public static void addCustomer(Customer c) throws SQLException, IOException {
 		connect_to_db();
 		try (Statement stmt = (Statement) conn.createStatement()) {
-			String query = "INSERT INTO customer (CustomerID, CustomerFName, CustomerLName, CustomerPhoneNumber) VALUES (" + c.getCustID() + ", '"
+			String query = "INSERT INTO customer (CustomerID, CustomerFName, CustomerLName, CustomerPhoneNumber) VALUES ("
+					+ c.getCustID() + ", '"
 					+ c.getFName() + "', '" + c.getLName() + "', '" + c.getPhone() + "')";
 			stmt.executeUpdate(query);
 		}
@@ -191,6 +300,13 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+
+		// Update the order to mark it as complete
+		String sql = "UPDATE orders SET isComplete = 1 WHERE OrderID = " + o.getOrderID();
+		Statement stmt = conn.createStatement();
+		stmt.executeUpdate(sql);
+
+		conn.close();
 	}
 
 	public static void AddToInventory(Topping t, double toAdd) throws SQLException, IOException {
@@ -204,7 +320,7 @@ public final class DBNinja {
 
 	public static void printInventory() throws SQLException, IOException {
 		connect_to_db();
-		
+
 		/*
 		 * I used this function to PRINT (not return) the inventory list.
 		 * When you print the inventory (either here or somewhere else)
@@ -341,11 +457,11 @@ public final class DBNinja {
 				String type = rs.getString("DiscountType");
 				double amt = rs.getDouble("DiscountAmt");
 				Boolean isPercent = false;
-				if(type.equals("percentage")){
-					isPercent=true;
-					amt = amt/100.0;
+				if (type.equals("percentage")) {
+					isPercent = true;
+					amt = amt / 100.0;
 				}
-				Discount d = new Discount(countID,name,amt,isPercent);
+				Discount d = new Discount(countID, name, amt, isPercent);
 				discs.add(d);
 			}
 			conn.close();
