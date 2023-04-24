@@ -350,7 +350,29 @@ public final class DBNinja {
 		ArrayList<Discount> discs = new ArrayList<Discount>();
 		connect_to_db();
 		// returns a list of all the discounts.
-
+		try {
+			String query = "SELECT * FROM discount ORDER BY DiscountName ASC";
+			Statement stmt = conn.prepareStatement(query);
+			ResultSet rs = stmt.executeQuery(query);
+			int countID = 1;
+			while (rs.next()) {
+				String name = rs.getString("DiscountName");
+				String type = rs.getString("DiscountType");
+				double amt = rs.getDouble("DiscountAmt");
+				Boolean isPercent = false;
+				if(type.equals("percentage")){
+					isPercent=true;
+					amt = amt/100.0;
+				}
+				Discount d = new Discount(countID,name,amt,isPercent);
+				discs.add(d);
+			}
+			conn.close();
+		} catch (Exception e) {
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		return discs;
 	}
@@ -362,6 +384,25 @@ public final class DBNinja {
 		 * return an arrayList of all the customers. These customers should
 		 * print in alphabetical order, so account for that as you see fit.
 		 */
+		try {
+			String query = "SELECT * FROM customer ORDER BY CustomerFName ASC";
+			Statement stmt = conn.prepareStatement(query);
+			ResultSet rs = stmt.executeQuery(query);
+
+			while (rs.next()) {
+				int id = rs.getInt("CustomerID");
+				String fname = rs.getString("CustomerFName");
+				String lname = rs.getString("CustomerLName");
+				String phone = rs.getString("CustomerPhoneNumber");
+				Customer cust = new Customer(id, fname, lname, phone);
+				custs.add(cust);
+			}
+			conn.close();
+		} catch (Exception e) {
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		return custs;
