@@ -198,8 +198,10 @@ public class Menu {
 		o.setDiscountList(discountList);
 
 		// Add Orders/Discounts to database
+		// Add Discounts to orders
 		for(Discount d: discountList){
 			DBNinja.useOrderDiscount(o,d);
+			o.addDiscount(d);
 		}
 		// Add order to database
 		DBNinja.addOrder(o);
@@ -349,20 +351,14 @@ public class Menu {
 	}
 
 	// A function that builds a pizza. Used in our add new order function
-	public static Pizza buildPizza(int orderID) throws SQLException, IOException 
+	public static Pizza buildPizza(int orderID) throws SQLException, IOException
 	{
-		
 		/*
 		 * This is a helper function for first menu option.
-		 * 
 		 * It should ask which size pizza the user wants and the crustType.
-		 * 
 		 * Once the pizza is created, it should be added to the DB.
-		 * 
 		 * We also need to add toppings to the pizza. (Which means we not only need to add toppings here, but also our bridge table)
-		 * 
 		 * We then need to add pizza discounts (again, to here and to the database)
-		 * 
 		 * Once the discounts are added, we can return the pizza
 		 */
 		System.out.println("Let's print a pizza!");
@@ -401,8 +397,8 @@ public class Menu {
 		Date date = new Date();
 		Pizza p = new Pizza(DBNinja.getMaxPizzaID()+1,size_str,crust_str,orderID,"Completed",date.toString(),BusPrice,CustPrice);
 		boolean add_topp = true;
-		int count = 0;
 		ArrayList<Topping> all_toppings = DBNinja.getInventory();
+		int count=0;
 		while(add_topp) {
 			System.out.println("Printing current topping list...");
 			DBNinja.printInventory();
@@ -420,10 +416,10 @@ public class Menu {
 			}else{
 				doubleAmt = false;
 			}
-			double topAmt;
 			for(Topping t: all_toppings){
 				if(t.getTopID()==top_ID){
 					p.addToppings(t,doubleAmt);
+					p.modifyDoubledArray(count,doubleAmt);
 					DBNinja.useTopping(p,t,doubleAmt);
 				}
 			}
