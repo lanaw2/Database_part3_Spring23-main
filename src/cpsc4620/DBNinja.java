@@ -131,9 +131,20 @@ public final class DBNinja {
 		 * It goes and fetches the largest PizzaID in the pizza table.
 		 * You wont need to implement this function if you didn't forget to do that
 		 */
-
+		int max_id = 0;
+		try {
+			String query = "SELECT MAX(PizzaID) FROM pizza";
+			Statement stmt = conn.prepareStatement(query);
+			ResultSet rs = stmt.executeQuery(query);
+			max_id = rs.getInt(0);
+			conn.close();
+		}catch(Exception e){
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return -1;
+		return max_id;
 	}
 
 	public static void useTopping(Pizza p, Topping t, boolean isDoubled) throws SQLException, IOException // this
