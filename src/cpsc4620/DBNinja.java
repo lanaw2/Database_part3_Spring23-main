@@ -316,6 +316,16 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		try {
+			String sql = "UPDATE toppings SET CurINVT = CurINVT + " + toAdd + " WHERE TopID = " + t.getTopName();
+			Statement stmt = conn.createStatement();
+			stmt.executeUpdate(sql);
+			System.out.println("Added " + toAdd + " to " + t.getTopName() + " inventory.");
+		} catch (SQLException e) {
+			System.out.println("Failed to add to topping inventory: " + e.getMessage());
+		} finally {
+			conn.close();
+		}
 	}
 
 	public static void printInventory() throws SQLException, IOException {
@@ -332,6 +342,21 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		String sql = "SELECT ToppingName, curINVT FROM toppings ORDER BY ToppingName";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(sql);
+
+		System.out.println("Inventory:\n");
+
+		while (rs.next()) {
+			String name = rs.getString("ToppingName");
+			double curINVT = rs.getDouble("curINVT");
+			System.out.printf("%-20s %10.2f\n", name, curINVT);
+		}
+
+		rs.close();
+		stmt.close();
+		conn.close();
 	}
 
 	public static ArrayList<Topping> getInventory() throws SQLException, IOException {
@@ -355,12 +380,67 @@ public final class DBNinja {
 		 * means we have an arrayList of dineinOrders, deliveryOrders, and pickupOrders.
 		 * 
 		 * Also, like toppings, whenever we print out the orders using menu function 4
-		 * and 5
-		 * these orders should print in order from newest to oldest.
+		 * and 5 these orders should print in order from newest to oldest.
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return null;
+		ArrayList<Order> orders = new ArrayList<Order>();
+
+		// Query the database for all orders
+		String sql = "SELECT * FROM orders ORDER BY DatePlaced DESC";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(sql);
+
+		// Loop through each row in the result set
+		while (rs.next()) {
+			int orderID = rs.getInt("OrderID");
+			int custID = rs.getInt("CustomerID");
+			String orderType = rs.getString("OrderType");
+			String date = rs.getString("DatePlaced");
+			double custPrice = rs.getDouble("CustomerPrice");
+			double busPrice = rs.getDouble("BusinessPrice");
+			int isComplete = rs.getInt("IsComplete");
+
+			// Determine the subtype of the order based on the orderType column
+			Order order;
+			if (orderType.equals(DBNinja.dine_in)) {
+				int tableNum = rs.getInt("TableNum");
+				order = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tableNum);
+			} else if (orderType.equals(DBNinja.delivery)) {
+				String address = rs.getString("DeliveryAddress");
+				order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
+			} else {
+				String pickupTime = rs.getString("PickupTime");
+				order = new PickupOrder(orderID, custID, date, custPrice, busPrice, isPickedUp, isComplete);
+			}
+
+			// Query the database for the pizzas and discounts associated with the order
+			/*
+			 * sql = "SELECT * FROM order_pizzas WHERE OrderID = " + orderID;
+			 * ResultSet pizzaRs = stmt.executeQuery(sql);
+			 * while (pizzaRs.next()) {
+			 * int pizzaID = pizzaRs.getInt("PizzaID");
+			 * Pizza pizza = DBNinja.getPizza(pizzaID);
+			 * order.addPizza(pizza);
+			 * }
+			 */
+
+			/*
+			 * sql = "SELECT * FROM order_discounts WHERE OrderID = " + orderID;
+			 * ResultSet discountRs = stmt.executeQuery(sql);
+			 * while (discountRs.next()) {
+			 * int discountID = discountRs.getInt("DiscountID");
+			 * Discount discount = DBNinja.getDiscount(discountID);
+			 * order.addDiscount(discount);
+			 * }
+			 */
+
+			orders.add(order);
+		}
+
+		// Close the database connection and return the ArrayList of orders
+		conn.close();
+		return orders;
 	}
 
 	public static ArrayList<Order> sortOrders(ArrayList<Order> list) {
@@ -409,6 +489,22 @@ public final class DBNinja {
 		// you store size & crust in your database, you may have to do a conversion
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		// Get the base price for the pizza based on its size and crust
+		String query = "SELECT BasePrice FROM Pizza WHERE Size = ? AND Crust = ?";
+		try (PreparedStatement stmt = conn.prepareStatement(query)) {
+			stmt.setString(1, size);
+			stmt.setString(2, crust);
+			ResultSet rs = stmt.executeQuery();
+			if (rs.next()) {
+				bp = rs.getDouble("BasePrice");
+			}
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+
+		// Close the database connection
+		conn.close();
+
 		return bp;
 	}
 
@@ -440,6 +536,17 @@ public final class DBNinja {
 		// you store size and crust in your database, you may have to do a conversion
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		String query = "SELECT BusPrice FROM pizza WHERE size = ? AND crust = ?";
+		PreparedStatement stmt = conn.prepareStatement(query);
+		stmt.setString(1, size);
+		stmt.setString(2, crust);
+		ResultSet rs = stmt.executeQuery();
+		if (rs.next()) {
+			bp = rs.getDouble("base_cost");
+		}
+		rs.close();
+		stmt.close();
+		conn.close();
 		return bp;
 	}
 
@@ -501,7 +608,6 @@ public final class DBNinja {
 			System.out.println(e);
 		}
 
-		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		return custs;
 	}
 
@@ -528,6 +634,18 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery("SELECT * FROM ToppingPopularity ORDER BY name ASC");
+		System.out.println("Topping Popularity Report:\n");
+		System.out.println("Topping\t\tNumber of Orders");
+		while (rs.next()) {
+			String name = rs.getString("name");
+			int orders = rs.getInt("orders");
+			System.out.printf("%-16s%d\n", name, orders);
+		}
+		rs.close();
+		stmt.close();
+		conn.close();
 	}
 
 	public static void printProfitByPizzaReport() throws SQLException, IOException {
@@ -541,6 +659,23 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+
+		String query = "SELECT * FROM ProfitByPizza ORDER BY pizza_name ASC";
+		try (PreparedStatement stmt = conn.prepareStatement(query)) {
+			ResultSet rs = stmt.executeQuery();
+			System.out.printf("%-20s %-10s %-10s %-10s %-10s\n", "Pizza Name", "Base Cost", "Price", "Quantity",
+					"Profit");
+			while (rs.next()) {
+				String pizzaName = rs.getString("pizza_name");
+				double baseCost = rs.getDouble("base_cost");
+				double price = rs.getDouble("price");
+				int quantity = rs.getInt("quantity");
+				double profit = rs.getDouble("profit");
+				System.out.printf("%-20s $%-9.2f $%-9.2f %-10d $%-9.2f\n", pizzaName, baseCost, price, quantity,
+						profit);
+			}
+		}
+		conn.close();
 	}
 
 	public static void printProfitByOrderType() throws SQLException, IOException {
@@ -554,6 +689,19 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
+		String query = "SELECT * FROM ProfitByOrderType ORDER BY order_type ASC;";
+		Statement stmt = conn.createStatement();
+		ResultSet rs = stmt.executeQuery(query);
+		System.out.println("Profit by Order Type Report:");
+		System.out.println("Order Type | Profit");
+		while (rs.next()) {
+			String orderType = rs.getString("order_type");
+			double profit = rs.getDouble("profit");
+			System.out.println(orderType + " | " + profit);
+		}
+		rs.close();
+		stmt.close();
+		conn.close();
 	}
 
 }

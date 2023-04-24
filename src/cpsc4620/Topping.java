@@ -1,7 +1,6 @@
 package cpsc4620;
 
-public class Topping 
-{
+public class Topping {
 	private int TopID;
 	private String TopName;
 	private double PerAMT;
@@ -12,7 +11,7 @@ public class Topping
 	private double BusPrice;
 	private int MinINVT;
 	private int CurINVT;
-	
+
 	public Topping(int topID, String topName, double perAMT, double medAMT, double lgAMT, double xLAMT,
 			double custPrice, double busPrice, int minINVT, int curINVT) {
 		TopID = topID;
@@ -113,7 +112,5 @@ public class Topping
 				+ ", LgAMT=" + LgAMT + ", XLAMT=" + XLAMT + ", CustPrice=" + CustPrice + ", BusPrice=" + BusPrice
 				+ ", MinINVT=" + MinINVT + ", CurINVT=" + CurINVT + "]";
 	}
-	
-	
 
 }
