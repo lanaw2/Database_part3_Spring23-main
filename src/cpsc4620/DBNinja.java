@@ -414,9 +414,20 @@ public final class DBNinja {
 		 * my OrderID auto increment...You can remove it if you
 		 * did not forget to auto increment your orderID.
 		 */
-
+		int max_id = 0;
+		try {
+			String query = "SELECT MAX(OrderID) FROM ordersummary";
+			Statement stmt = conn.prepareStatement(query);
+			ResultSet rs = stmt.executeQuery(query);
+			max_id = rs.getInt(0);
+			conn.close();
+		}catch(Exception e){
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return -1;
+		return max_id+1;
 	}
 
 	public static void printToppingPopReport() throws SQLException, IOException {
