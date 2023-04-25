@@ -24,7 +24,6 @@ public class DBConnector {
     private static String url = "jdbc:mysql://database-1.citnzvdp89t8.us-east-1.rds.amazonaws.com";
     private static Connection conn;
 
-
     /**
      * This function will handle the connection to the database
      *
