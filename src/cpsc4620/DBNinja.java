@@ -398,30 +398,30 @@ public final class DBNinja {
 		ArrayList<Order> orders = new ArrayList<Order>();
 
 		// Query the database for all orders
-		String sql = "SELECT * FROM orders ORDER BY DatePlaced DESC";
+		String sql = "SELECT * FROM ordersummary ORDER BY OrderTime DESC";
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(sql);
 
 		// Loop through each row in the result set
 		while (rs.next()) {
 			int orderID = rs.getInt("OrderID");
-			int custID = rs.getInt("CustomerID");
+			int custID = rs.getInt("OrderCustomerID");
 			String orderType = rs.getString("OrderType");
-			String date = rs.getString("DatePlaced");
-			double custPrice = rs.getDouble("CustomerPrice");
-			double busPrice = rs.getDouble("BusinessPrice");
-			int isComplete = rs.getInt("IsComplete");
+			String date = rs.getString("OrderTime");
+			double custPrice = rs.getDouble("OrderPrice");
+			double busPrice = rs.getDouble("OrderCost");
+			int isComplete = rs.getInt("OrderComplete");
 
 			// Determine the subtype of the order based on the orderType column
 			Order order;
 			if (orderType.equals(DBNinja.dine_in)) {
-				int tableNum = rs.getInt("TableNum");
+				int tableNum = rs.getInt("DineInTableNumber");
 				order = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tableNum);
 			} else if (orderType.equals(DBNinja.delivery)) {
 				String address = rs.getString("DeliveryAddress");
 				order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
 			} else {
-				String pickupTime = rs.getString("PickupTime");
+				int isPickedUp = rs.getInt("isPickedUp");
 				order = new PickupOrder(orderID, custID, date, custPrice, busPrice, isPickedUp, isComplete);
 			}
 
@@ -657,13 +657,13 @@ public final class DBNinja {
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		Statement stmt = conn.createStatement();
-		ResultSet rs = stmt.executeQuery("SELECT * FROM ToppingPopularity ORDER BY name ASC");
+		ResultSet rs = stmt.executeQuery("SELECT * FROM ToppingPopularity ORDER BY Topping ASC");
 		System.out.println("Topping Popularity Report:\n");
-		System.out.println("Topping\t\tNumber of Orders");
+		System.out.println("Topping\t\t\tTopping Count");
 		while (rs.next()) {
-			String name = rs.getString("name");
-			int orders = rs.getInt("orders");
-			System.out.printf("%-16s%d\n", name, orders);
+			String name = rs.getString("Topping");
+			int orders = rs.getInt("ToppingCount");
+			System.out.printf("%-20s%d\n", name, orders);
 		}
 		rs.close();
 		stmt.close();
@@ -682,19 +682,16 @@ public final class DBNinja {
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 
-		String query = "SELECT * FROM ProfitByPizza ORDER BY pizza_name ASC";
+		String query = "SELECT * FROM ProfitByPizza";
 		try (PreparedStatement stmt = conn.prepareStatement(query)) {
 			ResultSet rs = stmt.executeQuery();
-			System.out.printf("%-20s %-10s %-10s %-10s %-10s\n", "Pizza Name", "Base Cost", "Price", "Quantity",
-					"Profit");
+			System.out.printf("%-15s %-15s %-15s %-20s\n", "Pizza Crust", "Base Size", "Profit", "Last Order Date");
 			while (rs.next()) {
-				String pizzaName = rs.getString("pizza_name");
-				double baseCost = rs.getDouble("base_cost");
-				double price = rs.getDouble("price");
-				int quantity = rs.getInt("quantity");
-				double profit = rs.getDouble("profit");
-				System.out.printf("%-20s $%-9.2f $%-9.2f %-10d $%-9.2f\n", pizzaName, baseCost, price, quantity,
-						profit);
+				String crust = rs.getString(1);
+				String size = rs.getString(2);
+				double profit = rs.getDouble(3);
+				String date = rs.getString(4);
+				System.out.printf("%-16s %-12s %7.2f \t\t\t %-10s\n",crust,size,profit,date);
 			}
 		}
 		conn.close();
@@ -711,18 +708,19 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		String query = "SELECT * FROM ProfitByOrderType ORDER BY order_type ASC;";
+		String query = "SELECT * FROM ProfitByOrderType ORDER BY OrderType ASC;";
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
 		System.out.println("Profit by Order Type Report:");
-		System.out.println("Order Type | Profit");
+		System.out.printf("%-10s %-10s %-15s %-15s %-10s\n","Order Type |", "Order Month |", "Total Order Price |", "Total Order Cost |", "Profit");
 		while (rs.next()) {
-			String orderType = rs.getString("order_type");
-			double profit = rs.getDouble("profit");
-			System.out.println(orderType + " | " + profit);
+			String orderType = rs.getString(1);
+			String orderMonth = rs.getString(2);
+			double price = rs.getDouble(3);
+			double cost= rs.getDouble(4);
+			double profit = rs.getDouble(5);
+			System.out.printf("%-12s %-20s %-15s %-15s %-10s\n",orderType, orderMonth, price, cost, profit);
 		}
-		rs.close();
-		stmt.close();
 		conn.close();
 	}
 
