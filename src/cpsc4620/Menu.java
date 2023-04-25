@@ -106,7 +106,12 @@ public class Menu {
 
 		Integer CustID;
 		// Get next order number
-		Integer orderNumber = DBNinja.getNextOrderID();
+		int orderNumber;
+		if(DBNinja.getCurrentOrders().size()==0){
+			orderNumber=1;
+		}else{
+			orderNumber = DBNinja.getNextOrderID();
+		}
 		// Get customer information
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		System.out.println("Is this order for an existing customer? Y or N");
@@ -234,7 +239,7 @@ public class Menu {
 		 * Once you get the name and phone number (and anything else your design might have) add it to the DB
 		 */
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		int cus_id = DBNinja.getCustomerList().size();
+		int cus_id = DBNinja.getCustomerList().size()+1;
 		System.out.println("Please enter the customer's first name:");
 		String f_name = reader.readLine();
 		System.out.println("Please enter the customer's last name:");
@@ -256,7 +261,7 @@ public class Menu {
 	 * 
 	 */
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		System.out.println("Would you like to...\n(1) Display all orders\n(2)Display all orders since a specific date");
+		System.out.println("Would you like to...\n(1) Display all orders\n(2) Display all orders since a specific date");
 		int option = Integer.parseInt(reader.readLine());
 		ArrayList<Order> order_list = DBNinja.getCurrentOrders();
 		if(option==1){
@@ -326,7 +331,6 @@ public class Menu {
 	{
 		//print the inventory. I am really just concerned with the ID, the name, and the current inventory
 		DBNinja.printInventory();
-
 	}
 
 	// Select an inventory item and add more to the inventory level to re-stock the
@@ -338,7 +342,7 @@ public class Menu {
 		 */
 		DBNinja.printInventory();
 		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		System.out.print("Which topping would you like to add more to? Enter Topping ID Number");
+		System.out.print("Which topping would you like to add more to? Enter Topping ID Number:\n");
 		Integer top_id = Integer.parseInt(reader.readLine());
 		System.out.println("How much more would you like to add?");
 		Integer top_amt = Integer.parseInt(reader.readLine());
@@ -420,7 +424,6 @@ public class Menu {
 				if(t.getTopID()==top_ID){
 					p.addToppings(t,doubleAmt);
 					p.modifyDoubledArray(count,doubleAmt);
-					DBNinja.useTopping(p,t,doubleAmt);
 				}
 			}
 			count++;
@@ -443,7 +446,7 @@ public class Menu {
 				for(Discount d:dList){
 					if(d.getDiscountID()==discount_id){
 						p.addDiscounts(d);
-						DBNinja.usePizzaDiscount(p,d);
+
 					}
 				}
 
@@ -451,6 +454,15 @@ public class Menu {
 		}
 		Pizza ret = p;
 		DBNinja.addPizza(ret);
+		for(Discount d: ret.getDiscounts()){
+			DBNinja.usePizzaDiscount(p,d);
+		}
+		count=0;
+		for(Topping t: ret.getToppings()){
+			DBNinja.useTopping(p,t,ret.getIsDoubleArray()[count]);
+			count++;
+		}
+
 		return ret;
 	}
 	

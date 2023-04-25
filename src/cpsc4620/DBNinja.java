@@ -105,11 +105,10 @@ public final class DBNinja {
 
 		// Create the SQL statement for inserting a new pizza
 		try {
-			String query1 = "INSERT INTO pizzas (crust_type, size, order_id, pizza_state, pizza_date, cust_price, bus_price) "
+			String query1 = "INSERT INTO pizza (PizzaID,PizzaOrderIDmPizzaCrust, PizzaSize, PizzaCost, PizzaPrice, PizzaState) "
 					+
-					"VALUES ('" + p.getCrustType() + "', '" + p.getSize() + "', " + p.getOrderID() + ", '"
-					+ p.getPizzaState() +
-					"', '" + p.getPizzaDate() + "', " + p.getCustPrice() + ", " + p.getBusPrice() + ")";
+					"VALUES ('"+p.getPizzaID()+ "', " + p.getOrderID() +"','"+ p.getSize() + "', '" + p.getCrustType() + ", '"
+					+ p.getBusPrice() + "', " + p.getCustPrice() + ", " + p.getPizzaState()+ ")";
 
 			// Execute the SQL statement to insert the new pizza
 			Statement stmt = conn.createStatement();
@@ -168,15 +167,18 @@ public final class DBNinja {
 		 */
 		int max_id = 0;
 		try {
-			String query = "SELECT MAX(PizzaID) FROM pizza";
+			String query = "SELECT COALESCE(MAX(PizzaID), 1) FROM pizza";
 			Statement stmt = conn.prepareStatement(query);
 			ResultSet rs = stmt.executeQuery(query);
-			max_id = rs.getInt(0);
-			conn.close();
+			if(rs.next()){
+				max_id = rs.getInt(1);
+			}
 		}catch(Exception e){
 			System.err.println("Got an exception!");
 			e.printStackTrace();
 			System.out.println(e);
+		}finally{
+			conn.close();
 		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		return max_id;
@@ -204,11 +206,11 @@ public final class DBNinja {
 		try {
 			// Retrieve the current inventory of the topping
 			Statement stmt = conn.createStatement();
-			String query1 = "SELECT CurINVT FROM Topping WHERE TopID = " + t.getTopID();
+			String query1 = "SELECT ToppingInventory FROM topping WHERE ToppingName = '" + t.getTopName()+"'";
 			ResultSet rs1 = stmt.executeQuery(query1);
 			int curINVT = 0;
 			if (rs1.next()) {
-				curINVT = rs1.getInt("CurINVT");
+				curINVT = rs1.getInt("ToppingInventory");
 			}
 
 			// Calculate the amount of topping needed based on pizza size and isDoubled flag
@@ -239,7 +241,7 @@ public final class DBNinja {
 
 			// Update the inventory of the topping
 			curINVT -= amount;
-			String query2 = "UPDATE Topping SET CurINVT = " + curINVT + " WHERE TopID = " + t.getTopID();
+			String query2 = "UPDATE topping SET ToppingInventory = " + curINVT + " WHERE ToppingName = '" + t.getTopName()+"'";
 			int rowsAffected = stmt.executeUpdate(query2);
 			if (rowsAffected != 1) {
 				System.out.println("Failed to update the inventory of " + t.getTopName() + ".");
@@ -248,7 +250,7 @@ public final class DBNinja {
 
 			// Add an entry to the PizzaTops table
 			String query3 = "INSERT INTO pizzatopping (PizzaToppingPizzaID, PizzaToppingToppingName, PizzaToppingExtra) VALUES ("
-					+ p.getPizzaID() + ", " + t.getTopName() + ", " + (isDoubled ? 1 : 0) + ")";
+					+ p.getPizzaID() + ", '" + t.getTopName() + "', " + (isDoubled ? 1 : 0) + ")";
 			rowsAffected = stmt.executeUpdate(query3);
 			if (rowsAffected != 1) {
 				System.out.println("Failed to add topping usage to PizzaTops table.");
@@ -328,7 +330,7 @@ public final class DBNinja {
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		try {
-			String sql = "UPDATE toppings SET CurINVT = CurINVT + " + toAdd + " WHERE TopID = " + t.getTopName();
+			String sql = "UPDATE topping SET ToppingInventory = ToppingInventory + " + toAdd + " WHERE ToppingName = '" + t.getTopName()+"'";
 			Statement stmt = conn.createStatement();
 			stmt.executeUpdate(sql);
 			System.out.println("Added " + toAdd + " to " + t.getTopName() + " inventory.");
@@ -353,33 +355,57 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		String sql = "SELECT ToppingName, curINVT FROM toppings ORDER BY ToppingName";
+		String sql = "SELECT ToppingName, ToppingInventory FROM topping ORDER BY ToppingName";
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(sql);
 
 		System.out.println("Inventory:\n");
-
+		int count = 1;
+		System.out.printf("%-5s %-25s %-5s\n","ID","Name","CurINVT");
 		while (rs.next()) {
 			String name = rs.getString("ToppingName");
-			double curINVT = rs.getDouble("curINVT");
-			System.out.printf("%-20s %10.2f\n", name, curINVT);
+			double curINVT = rs.getDouble("ToppingInventory");
+			System.out.printf("%-5d %-25s %5.0f\n",count, name, curINVT);
+			count = count+1;
 		}
-
-		rs.close();
-		stmt.close();
 		conn.close();
 	}
 
 	public static ArrayList<Topping> getInventory() throws SQLException, IOException {
 		connect_to_db();
+		ArrayList<Topping> topping_list = new ArrayList<Topping>();
 		/*
 		 * This function actually returns the toppings. The toppings
 		 * should be returned in alphabetical order if you don't
 		 * plan on using a printInventory function
 		 */
-
+		try {
+			String query = "SELECT * FROM topping ORDER BY ToppingName";
+			Statement stmt = conn.prepareStatement(query);
+			ResultSet rs = stmt.executeQuery(query);
+			int count = 1;
+			while (rs.next()) {
+				int topID = rs.getRow();
+				String topName = rs.getString("ToppingName");
+				double perAMT = rs.getDouble("ToppingSmallAmount");
+				double medAMT = rs.getDouble("ToppingMediumAmount");
+				double lgAMT = rs.getDouble("ToppingLargeAmount");
+				double xLAMT = rs.getDouble("ToppingXLargeAmount");
+				double custPrice = rs.getDouble("ToppingPrice");
+				double busPrice = rs.getDouble("ToppingCostPerUnit");
+				int minINVT = 0; // You can set this value if needed
+				int curINVT = rs.getInt("ToppingInventory");
+				Topping topping = new Topping(topID, topName, perAMT, medAMT, lgAMT, xLAMT, custPrice, busPrice, minINVT, curINVT);
+				topping_list.add(topping);
+			}
+			conn.close();
+		} catch (Exception e) {
+			System.err.println("Got an exception!");
+			e.printStackTrace();
+			System.out.println(e);
+		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return null;
+		return topping_list;
 	}
 
 	public static ArrayList<Order> getCurrentOrders() throws SQLException, IOException {
@@ -413,39 +439,31 @@ public final class DBNinja {
 			int isComplete = rs.getInt("OrderComplete");
 
 			// Determine the subtype of the order based on the orderType column
-			Order order;
+			Order order = null;
+			Statement stmt2 = conn.createStatement();
+			ResultSet rs2;
 			if (orderType.equals(DBNinja.dine_in)) {
-				int tableNum = rs.getInt("DineInTableNumber");
-				order = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tableNum);
+				String sql2 = "Select DineInTableNumber from dinein where DineInOrderID='"+orderID+"'";
+				rs2 = stmt2.executeQuery(sql2);
+				while(rs2.next()) {
+					int tableNum = rs2.getInt("DineInTableNumber");
+					order = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tableNum);
+				}
 			} else if (orderType.equals(DBNinja.delivery)) {
-				String address = rs.getString("DeliveryAddress");
-				order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
+				String sql2 = "Select DeliveryAddress from delivery where DeliveryOrderID='"+orderID+"'";
+				rs2 = stmt2.executeQuery(sql2);
+				while(rs2.next()) {
+					String address = rs2.getString("DeliveryAddress");
+					order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
+				}
 			} else {
-				int isPickedUp = rs.getInt("isPickedUp");
-				order = new PickupOrder(orderID, custID, date, custPrice, busPrice, isPickedUp, isComplete);
+				String sql2 = "Select isPickedUp from pickup where PickupOrderID='"+orderID+"'";
+				rs2 = stmt2.executeQuery(sql2);
+				while(rs2.next()) {
+					int isPickedUp = rs2.getInt("isPickedUp");
+					order = new PickupOrder(orderID, custID, date, custPrice, busPrice, isPickedUp, isComplete);
+				}
 			}
-
-			// Query the database for the pizzas and discounts associated with the order
-			/*
-			 * sql = "SELECT * FROM order_pizzas WHERE OrderID = " + orderID;
-			 * ResultSet pizzaRs = stmt.executeQuery(sql);
-			 * while (pizzaRs.next()) {
-			 * int pizzaID = pizzaRs.getInt("PizzaID");
-			 * Pizza pizza = DBNinja.getPizza(pizzaID);
-			 * order.addPizza(pizza);
-			 * }
-			 */
-
-			/*
-			 * sql = "SELECT * FROM order_discounts WHERE OrderID = " + orderID;
-			 * ResultSet discountRs = stmt.executeQuery(sql);
-			 * while (discountRs.next()) {
-			 * int discountID = discountRs.getInt("DiscountID");
-			 * Discount discount = DBNinja.getDiscount(discountID);
-			 * order.addDiscount(discount);
-			 * }
-			 */
-
 			orders.add(order);
 		}
 
@@ -501,7 +519,7 @@ public final class DBNinja {
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
 		// Get the base price for the pizza based on its size and crust
-		String query = "SELECT BasePrice FROM Pizza WHERE Size = ? AND Crust = ?";
+		String query = "SELECT BasePrice FROM baseprice WHERE Size = ? AND Crust = ?";
 		try (PreparedStatement stmt = conn.prepareStatement(query)) {
 			stmt.setString(1, size);
 			stmt.setString(2, crust);
@@ -528,7 +546,7 @@ public final class DBNinja {
 		 */
 		connect_to_db();
 		String ret = "";
-		String query = "Select FName, LName From Customer WHERE CustID=" + CustID + ";";
+		String query = "Select CustomerFName, CustomerLName From customer WHERE CustomerID=" + CustID + ";";
 		Statement stmt = conn.createStatement();
 		ResultSet rset = stmt.executeQuery(query);
 
@@ -547,7 +565,7 @@ public final class DBNinja {
 		// you store size and crust in your database, you may have to do a conversion
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		String query = "SELECT BusPrice FROM pizza WHERE size = ? AND crust = ?";
+		String query = "SELECT BaseCost FROM baseprice WHERE Size = ? AND Crust = ?";
 		PreparedStatement stmt = conn.prepareStatement(query);
 		stmt.setString(1, size);
 		stmt.setString(2, crust);
@@ -555,8 +573,6 @@ public final class DBNinja {
 		if (rs.next()) {
 			bp = rs.getDouble("base_cost");
 		}
-		rs.close();
-		stmt.close();
 		conn.close();
 		return bp;
 	}
@@ -628,20 +644,24 @@ public final class DBNinja {
 		 * my OrderID auto increment...You can remove it if you
 		 * did not forget to auto increment your orderID.
 		 */
+		connect_to_db();
 		int max_id = 0;
 		try {
-			String query = "SELECT MAX(OrderID) FROM ordersummary";
+			String query = "SELECT COALESCE(MAX(OrderID), 1) FROM ordersummary";
 			Statement stmt = conn.prepareStatement(query);
 			ResultSet rs = stmt.executeQuery(query);
-			max_id = rs.getInt(0);
-			conn.close();
-		}catch(Exception e){
+			if(rs.next()){
+				max_id = rs.getInt(1);
+			}
+		} catch (Exception e) {
 			System.err.println("Got an exception!");
 			e.printStackTrace();
 			System.out.println(e);
+		} finally {
+			conn.close();
 		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return max_id+1;
+		return max_id + 1;
 	}
 
 	public static void printToppingPopReport() throws SQLException, IOException {
