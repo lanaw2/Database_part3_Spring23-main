@@ -173,7 +173,7 @@ public final class DBNinja {
 			ResultSet rs = stmt.executeQuery(query);
 			max_id = rs.getInt(0);
 			conn.close();
-		}catch(Exception e){
+		} catch (Exception e) {
 			System.err.println("Got an exception!");
 			e.printStackTrace();
 			System.out.println(e);
@@ -395,58 +395,75 @@ public final class DBNinja {
 		 */
 
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		ArrayList<Order> orders = new ArrayList<Order>();
-
-		// Query the database for all orders
-		String sql = "SELECT * FROM ordersummary ORDER BY OrderTime DESC";
+		/*
+		 * ArrayList<Order> orders = new ArrayList<Order>();
+		 * 
+		 * // Query the database for all orders
+		 * String sql = "SELECT * FROM ordersummary ORDER BY OrderTime DESC";
+		 * Statement stmt = conn.createStatement();
+		 * ResultSet rs = stmt.executeQuery(sql);
+		 * 
+		 * // Loop through each row in the result set
+		 * while (rs.next()) {
+		 * int orderID = rs.getInt("OrderID");
+		 * int custID = rs.getInt("OrderCustomerID");
+		 * String orderType = rs.getString("OrderType");
+		 * String date = rs.getString("OrderTime");
+		 * double custPrice = rs.getDouble("OrderPrice");
+		 * double busPrice = rs.getDouble("OrderCost");
+		 * int isComplete = rs.getInt("OrderComplete");
+		 * 
+		 * // Determine the subtype of the order based on the orderType column
+		 * Order order;
+		 * if (orderType.equals(DBNinja.dine_in)) {
+		 * int tableNum = rs.getInt("DineInTableNumber");
+		 * order = new DineinOrder(orderID, custID, date, custPrice, busPrice,
+		 * isComplete, tableNum);
+		 * } else if (orderType.equals(DBNinja.delivery)) {
+		 * String address = rs.getString("DeliveryAddress");
+		 * order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice,
+		 * isComplete, address);
+		 * } else {
+		 * int isPickedUp = rs.getInt("isPickedUp");
+		 * order = new PickupOrder(orderID, custID, date, custPrice, busPrice,
+		 * isPickedUp, isComplete);
+		 * }
+		 * 
+		 * orders.add(order);
+		 */
+		ArrayList<Order> orders = new ArrayList<>();
 		Statement stmt = conn.createStatement();
-		ResultSet rs = stmt.executeQuery(sql);
+		String query = "SELECT * FROM Orders";
+		ResultSet rs = stmt.executeQuery(query);
 
-		// Loop through each row in the result set
 		while (rs.next()) {
-			int orderID = rs.getInt("OrderID");
-			int custID = rs.getInt("OrderCustomerID");
-			String orderType = rs.getString("OrderType");
-			String date = rs.getString("OrderTime");
-			double custPrice = rs.getDouble("OrderPrice");
-			double busPrice = rs.getDouble("OrderCost");
-			int isComplete = rs.getInt("OrderComplete");
+			int orderID = rs.getInt("orderID");
+			int custID = rs.getInt("custID");
+			String orderType = rs.getString("orderType");
+			String date = rs.getString("date");
+			double custPrice = rs.getDouble("custPrice");
+			double busPrice = rs.getDouble("busCost");
+			int isComplete = rs.getInt("iscomplete");
 
-			// Determine the subtype of the order based on the orderType column
-			Order order;
-			if (orderType.equals(DBNinja.dine_in)) {
-				int tableNum = rs.getInt("DineInTableNumber");
-				order = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tableNum);
-			} else if (orderType.equals(DBNinja.delivery)) {
-				String address = rs.getString("DeliveryAddress");
-				order = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
-			} else {
-				int isPickedUp = rs.getInt("isPickedUp");
-				order = new PickupOrder(orderID, custID, date, custPrice, busPrice, isPickedUp, isComplete);
+			switch (orderType) {
+				case "Dine-In":
+					int tablenum = rs.getInt("tablenum");
+					DineinOrder dineinOrder = new DineinOrder(orderID, custID, date, custPrice, busPrice, isComplete, tablenum);
+					orders.add(dineinOrder);
+					break;
+				case "Delivery":
+					String address = rs.getString("address");
+					DeliveryOrder deliveryOrder = new DeliveryOrder(orderID, custID, date, custPrice, busPrice, isComplete, address);
+					orders.add(deliveryOrder);
+					break;
+				case "Pickup":
+					int pickedup = rs.getInt("isPickedUp");
+					PickupOrder pickupOrder = new PickupOrder(orderID, custID, date, custPrice, busPrice, pickedup, isComplete);
+					orders.add(pickupOrder);
+					break;
+				default:
+					// Do nothing
 			}
-
-			// Query the database for the pizzas and discounts associated with the order
-			/*
-			 * sql = "SELECT * FROM order_pizzas WHERE OrderID = " + orderID;
-			 * ResultSet pizzaRs = stmt.executeQuery(sql);
-			 * while (pizzaRs.next()) {
-			 * int pizzaID = pizzaRs.getInt("PizzaID");
-			 * Pizza pizza = DBNinja.getPizza(pizzaID);
-			 * order.addPizza(pizza);
-			 * }
-			 */
-
-			/*
-			 * sql = "SELECT * FROM order_discounts WHERE OrderID = " + orderID;
-			 * ResultSet discountRs = stmt.executeQuery(sql);
-			 * while (discountRs.next()) {
-			 * int discountID = discountRs.getInt("DiscountID");
-			 * Discount discount = DBNinja.getDiscount(discountID);
-			 * order.addDiscount(discount);
-			 * }
-			 */
-
-			orders.add(order);
 		}
 
 		// Close the database connection and return the ArrayList of orders
@@ -635,13 +652,13 @@ public final class DBNinja {
 			ResultSet rs = stmt.executeQuery(query);
 			max_id = rs.getInt(0);
 			conn.close();
-		}catch(Exception e){
+		} catch (Exception e) {
 			System.err.println("Got an exception!");
 			e.printStackTrace();
 			System.out.println(e);
 		}
 		// DO NOT FORGET TO CLOSE YOUR CONNECTION
-		return max_id+1;
+		return max_id + 1;
 	}
 
 	public static void printToppingPopReport() throws SQLException, IOException {
@@ -691,7 +708,7 @@ public final class DBNinja {
 				String size = rs.getString(2);
 				double profit = rs.getDouble(3);
 				String date = rs.getString(4);
-				System.out.printf("%-16s %-12s %7.2f \t\t\t %-10s\n",crust,size,profit,date);
+				System.out.printf("%-16s %-12s %7.2f \t\t\t %-10s\n", crust, size, profit, date);
 			}
 		}
 		conn.close();
@@ -712,14 +729,15 @@ public final class DBNinja {
 		Statement stmt = conn.createStatement();
 		ResultSet rs = stmt.executeQuery(query);
 		System.out.println("Profit by Order Type Report:");
-		System.out.printf("%-10s %-10s %-15s %-15s %-10s\n","Order Type |", "Order Month |", "Total Order Price |", "Total Order Cost |", "Profit");
+		System.out.printf("%-10s %-10s %-15s %-15s %-10s\n", "Order Type |", "Order Month |", "Total Order Price |",
+				"Total Order Cost |", "Profit");
 		while (rs.next()) {
 			String orderType = rs.getString(1);
 			String orderMonth = rs.getString(2);
 			double price = rs.getDouble(3);
-			double cost= rs.getDouble(4);
+			double cost = rs.getDouble(4);
 			double profit = rs.getDouble(5);
-			System.out.printf("%-12s %-20s %-15s %-15s %-10s\n",orderType, orderMonth, price, cost, profit);
+			System.out.printf("%-12s %-20s %-15s %-15s %-10s\n", orderType, orderMonth, price, cost, profit);
 		}
 		conn.close();
 	}
